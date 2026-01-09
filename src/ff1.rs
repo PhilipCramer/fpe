@@ -64,7 +64,7 @@ impl Radix {
             let log_radix = 31 - radix.leading_zeros();
             Radix::PowerTwo {
                 radix,
-                min_len: cmp::max((MIN_RADIX_2_NS_LEN + log_radix - 1) / log_radix, MIN_NS_LEN),
+                min_len: cmp::max(MIN_RADIX_2_NS_LEN.div_ceil(log_radix), MIN_NS_LEN),
                 log_radix: u8::try_from(log_radix).unwrap(),
             }
         } else {
@@ -101,7 +101,7 @@ impl Radix {
         use libm::{ceil, log2};
         match *self {
             Radix::Any { radix, .. } => ceil(v as f64 * log2(f64::from(radix)) / 8f64) as usize,
-            Radix::PowerTwo { log_radix, .. } => ((v * log_radix as usize) + 7) / 8,
+            Radix::PowerTwo { log_radix, .. } => (v * log_radix as usize).div_ceil(8),
         }
     }
 
@@ -204,7 +204,7 @@ fn generate_s<'a, CIPH: BlockEncrypt>(
 ) -> impl Iterator<Item = u8> + 'a {
     r.clone()
         .into_iter()
-        .chain((1..((d + 15) / 16) as u128).flat_map(move |j| {
+        .chain((1..d.div_ceil(16) as u128).flat_map(move |j| {
             let mut block = r.clone();
             for (b, j) in block.iter_mut().zip(j.to_be_bytes().iter()) {
                 *b ^= j;
@@ -260,7 +260,7 @@ impl<CIPH: BlockCipher + BlockEncrypt + Clone> FF1<CIPH> {
         let b = self.radix.calculate_b(v);
 
         // 4. Let d = 4 * ceil(b / 4) + 4.
-        let d = 4 * ((b + 3) / 4) + 4;
+        let d = 4 * b.div_ceil(4) + 4;
 
         // 5. Let P = [1, 2, 1] || [radix] || [10] || [u mod 256] || [n] || [t].
         let mut p = [1, 2, 1, 0, 0, 0, 10, u as u8, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -330,7 +330,7 @@ impl<CIPH: BlockCipher + BlockEncrypt + Clone> FF1<CIPH> {
         let b = self.radix.calculate_b(v);
 
         // 4. Let d = 4 * ceil(b / 4) + 4.
-        let d = 4 * ((b + 3) / 4) + 4;
+        let d = 4 * b.div_ceil(4) + 4;
 
         // 5. Let P = [1, 2, 1] || [radix] || [10] || [u mod 256] || [n] || [t].
         let mut p = [1, 2, 1, 0, 0, 0, 10, u as u8, 0, 0, 0, 0, 0, 0, 0, 0];

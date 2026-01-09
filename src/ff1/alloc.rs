@@ -1,7 +1,5 @@
 //! FF1 NumeralString implementations that require a global allocator.
 
-use core::iter;
-
 use alloc::{vec, vec::Vec};
 
 use num_bigint::{BigInt, BigUint, Sign};
@@ -55,7 +53,7 @@ impl Numeral for BigUint {
             let mut bytes = self.to_bytes_le();
             let padding = b - bytes.len();
             bytes.reserve_exact(padding);
-            bytes.extend(iter::repeat(0).take(padding));
+            bytes.extend(std::iter::repeat_n(0, padding));
             bytes.reverse();
             bytes
         }
@@ -97,7 +95,7 @@ impl NumeralString for FlexibleNumeralString {
     type Ops = Self;
 
     fn is_valid(&self, radix: u32) -> bool {
-        self.0.iter().all(|n| (u32::from(*n) < radix))
+        self.0.iter().all(|n| u32::from(*n) < radix)
     }
 
     fn numeral_count(&self) -> usize {
@@ -194,7 +192,7 @@ impl NumeralString for BinaryNumeralString {
         let n = self.numeral_count();
         let u = n / 2;
         let v = n - u;
-        let a_end = (u + 7) / 8;
+        let a_end = u.div_ceil(8);
         let b_start = u / 8;
 
         // FF1 processes the two halves of a numeral string as big-endian integers in the
@@ -242,7 +240,7 @@ impl NumeralString for BinaryNumeralString {
         let a_subslice = self.0[..a_end].iter();
         let b_subslice = self.0[b_start..].iter();
 
-        let (a, b) = if u % 8 == 0 {
+        let (a, b) = if u.is_multiple_of(8) {
             // Simple case: no shifting necessary, just splitting and reversing.
             assert_eq!(a_end, b_start);
 
@@ -297,7 +295,7 @@ impl NumeralString for BinaryNumeralString {
             // Simple case: no shifting necessary, just reversing and joining.
             b.data
                 .into_iter()
-                .chain(a.data.into_iter())
+                .chain(a.data)
                 .map(|b| b.reverse_bits())
                 .rev()
                 .collect()
@@ -384,7 +382,7 @@ impl Operations for BinaryOps {
 
 impl BinaryOps {
     fn new(data: Vec<u8>, num_bits: usize) -> Self {
-        assert_eq!(data.len(), (num_bits + 7) / 8);
+        assert_eq!(data.len(), num_bits.div_ceil(8));
         BinaryOps { data, num_bits }
     }
 
